@@ -1,0 +1,162 @@
+---
+title: "Case 4"
+author: "Alec Soudry"
+date: "11/8/2021"
+output: html_document
+---
+ 
+```{r}
+college = read.csv("college.csv", header = TRUE, stringsAsFactors = FALSE, na.strings = "")
+```
+
+```{r}
+dim(college)
+```
+From our results, we see the data set has 1269 rows and 17 columns.
+
+```{r}
+colnames(college)
+head(college)
+```
+The majority of these variables are named accordingly and in a obvious manner to describe various aspects of schools across the country.The only exceptions being "highest_degree" is the type of degree the student received, and "control" is whether the institution is public or private.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(naniar)
+```
+I will use the is.na() function to determine if there are any missing values, and the sum them together
+```{r}
+sum(is.na(college))
+```
+
+If there were missing values we could use the vis_miss() function to visualize them through a count and by category 
+```{r}
+vis_miss(college)
+```
+
+or we could use the gg_miss_var() function to look at it through a percentage of missing values by category
+```{r}
+gg_miss_var(college,show_pct = TRUE)
+```
+
+```{r}
+ggplot(data = college, aes(x = undergrads))+
+  geom_histogram(binwidth = 1000, fill = "dodgerblue1")+
+  labs(title="Distribution of Undergraduate Students", y="Frequency")+
+  scale_x_continuous(name = "Number of Undergraduates", breaks = c(0,5000,10000,15000,20000,25000,30000,35000,40000,45000,50000,55000))
+```
+
+This histogram confirms that the number of undergraduates at colleges is very positively skewed due to a small number of colleges having significantly larger undergraduate populations. Most colleges have somewhere between 0 and 10,000 undergraduates, with a smaller number of colleges having over 10,000 undergraduates.
+
+```{r}
+ggplot(college, aes(region)) +
+  geom_bar(fill = "darkorchid1") +
+  labs(title="Count of Universities by Region", y="Count")+
+  scale_x_discrete(name = "Region")
+```
+
+Here we are looking at the tuition cost based on the the type of degree being received.
+```{r}
+ggplot(data = college, aes(x = highest_degree, y = tuition)) +
+  geom_boxplot(fill = c("lightseagreen", "orange1","slategray2"))+
+  scale_y_log10()+
+  stat_summary(fun = "mean") +
+  labs(title = "Cost of Tuition by Degree Type", 
+       x = "Degree Type", 
+       y = "Tuition($)")
+```
+
+From this chart we can we that on average getting a bachelor degree costs the most, having both the highest median and mean. The second most expesnive is the Graduate degree coming in slightly under the Bachelor degree, having however a larger interquartile range, signifying greater variability in tuition cost. In last is the Associate degree coming in on average half the price of the two aforementioned degree types, most likely because the length is drastically shorter to obtain said degree. 
+
+I am examining the relationship between the SAT Averages of colleges and their admission rates. A potential correlation between the two variables could provide information about some of the factors that go into colleges being more or less selective in the admission process. To visualize this relationship, I will be creating a scatter plot, and adding a smooth line to better distinguish the trend between the two variables.
+```{r}
+ggplot(data = college, aes(x = sat_avg, y = admission_rate)) +
+  geom_point(color = "aquamarine3", size = 0.7)+
+  geom_smooth(color = "brown1")+
+  labs(title = "Admission Rate vs. SAT Scores", x = "Average SAT Score", y = "Admission Rate")
+```
+
+This scatter plot with the smooth line shows that there is a general relationship between average SAT scores and the admission rate of a college. The smooth line suggests that SAT score matters less in the admission rate for colleges with lower average SAT scores, but for colleges with average SAT scores above 900 to 1000, it becomes significantly more important to the admission rate of the college. It’s clear that SAT scores is a fairly good predictor of how selective a college is in their admission process, and I will use this finding shortly to look into the exclusiveness of colleges.
+
+I am using a stacked bar chart to determine not only how many degrees were received per state, but using the fill function to determine what type od degrees were reached.
+```{r}
+counts <- table(college$highest_degree, college$state)
+barplot(counts, main="Education Level by State",
+        xlab="State", 
+        ylab = "Count of Degree's Received",
+        col=c("hotpink1","lavenderblush1", "lightblue"),
+        legend = rownames(counts))
+```
+
+By in large the majority of degrees received were graduate degrees, with bachelor degrees making a fractional portion of total degrees received, and associate degrees contributing an insignificant portion of towards the total. While there seems to be no pattern as to what state has the greatest amount of degrees received, having the two largest counts be in Pennsylvania and New York count indicate simply that the states with the most schools produce the most degrees, or there might be some correlation to schools in the Midwest - Northeast geographical locations
+
+To explore the relationship between a variable pair conditional on another variable, I will create a scatter plot of the relationship between average SAT score and the number of undergraduates at colleges, with the control variable as a color layer. This will help to see the general trend between SAT scores and the size of the student population, while also comparing these variables for public vs. private universities
+```{r}
+ggplot(data = college, aes(x = sat_avg, y = undergrads, color = control))+
+  geom_point(size = 0.7, alpha = 0.5)+
+  geom_smooth()+
+  scale_y_log10()+
+  labs(title = "SAT Score vs. Undergraduates (Public vs. Private Universities)", 
+       x = "Average SAT Score", 
+       y = "Count of Undergraduates")
+```
+
+From this scatter plot we are able to deduce that there doesn’t appear to be a strong relationship between SAT scores and the number of undergraduate students for private colleges. In fact, the number of undergraduates seems to be about the same no matter how many undergraduates there are in private colleges. For public colleges, there is more of a positive relationship between SAT scores and undergraduates. The visualization also shows that public colleges typically have more undergraduates attending, although the spread of SAT scores is somewhat identical for each college type, with private colleges having a somewhat higher ceiling for average SAT scores.
+
+I’ll be looking at levels of debt accumulated by students at colleges to see if there are any patterns or factors that contribute to higher levels of debt. First, I’ll be comparing the median debt to the highest degree offered by colleges, as well as the “control” to see if there’s a difference in debt levels for both the highest degree level of a college and for public vs. private colleges. To do this, I’ll create a bar plot of the average debt levels for each degree level, and separated by private vs. public colleges.
+```{r}
+ggplot(data = college, aes(x = highest_degree, y = median_debt, fill = control))+
+              geom_bar(position = "dodge", 
+                       stat = "summary", 
+                       fun = "mean")+
+              labs(title = "Debt Accumulated vs. Degree Received (Public vs. Private Universities)",
+                   x = "Highest Degree Received", 
+                   y = "Median Debt($)")
+```
+
+This barplot shows that students attending colleges with a highest degree of Associate typically accumulate a lower median debt compared to the other two categories. There is not a significant difference between median debt levels for colleges offering Bachelor's and Graduate’s degrees as the highest level, indicating that the only main effect of highest degree on debt level is whether the college only offers an Associate's degree or has higher degree levels. At all three levels of degrees offered, students at private colleges typically see slightly higher levels of debt.
+
+Other factors that could contribute to higher levels of debt are the tuition rate of a college, as well as the region the college is located in. To visualize whether these factors contribute to debt levels, I’ll create a scatter plot showing the relationship between median debt and tuition, with the region of the college added in as a shape aesthetic.
+```{r}
+ggplot(data = college, aes(x = median_debt, y = tuition, shape = region))+
+              geom_point(size = 0.7)+
+              geom_smooth(aes(color = region))+
+              labs(title = "Student Debt vs. Tuition Rates (By Region)", 
+                   x = "Median Debt($)", 
+                   y = "Tuition($)")
+```
+
+This scatter plot does not show much relationship between the median debt level and tuition, for any of the regions. It doesn’t appear that these factors are very helpful in predicting the debt level of a college.
+
+Something that would be very useful to know for students applying to colleges is whether certain parts of the country tend to have different tuition rates. To begin this processes on a broad level I will look at the tutition by region using a bar plot.
+```{r}
+ggplot(data = college, aes(x = region, y = tuition))+
+  geom_bar(fill = "wheat2",color = "black",stat = "summary", fun = "mean")+
+  labs(title = "Tuition by State", subtitle = "For the West Region", x = "State", y = "Average Tuition")
+```
+
+It appears the Northeast is the most expensive, however both the Midwest and West are within 3,000 dollars of Northeast's average. This leaving only south to average 10,000 dollars less than Northeast.
+
+To greater explore this from beyond a bar plot and visualize whether there are differences, I will be creating boxplots of the tuition rates for each region of the country. These boxplots will display some of the key summary statistics for each region, which will help to identify differences in tuition by region.
+```{r}
+ggplot(data = college, aes(x = region, y = tuition)) +
+  geom_boxplot(fill = c("springgreen2", "deepskyblue2","hotpink1","firebrick1"))+
+  stat_summary(fun = "mean") +
+  labs(title = "Cost of Tuition by Region", 
+       x = "Region", 
+       y = "Tuition($)")
+```
+
+This boxplot shows that the Northeast region tends to have the highest tuition rates compared to the other regions, because it has both the highest median and mean values of tuition rates. The South and West regions both have the lowest median tuition rates, with the medians of both of them being almost the same as the first quartiles of the Midwest and Northeast regions. This suggests that colleges in the South and West tend to have more colleges with tuition rates of $15,000 or less. These regions also, however, have higher means than medians, which shows that there are some colleges in the South and West with much higher tuition rates that are positively skewing their distributions.
+
+After seeing this price discrepancies between region I would like to look deeper into which states have the highest tuition rates. To do this, I will create a barplot to visualize the average tuition rates for every state in this region.
+```{r}
+ggplot(data = college, aes(x = state, y = tuition))+
+  geom_bar(fill = "wheat2",color = "black",stat = "summary", fun = "mean")+
+  labs(title = "Tuition by State",x = "State", y = "Average Tuition")
+
+```
+
+Looking at the barplot of the average tuition rates for each state, Washington D.C., Maryland, California, and Rhode Island are the four states that have noticeably higher average tuition rates than the rest of the states, meaning that the colleges in a lot of these states are causing the average tuition rates in the Northeast as a whole to be higher.
